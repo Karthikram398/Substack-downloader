@@ -232,35 +232,44 @@ class SubstackScraper:
                 f.write(full_md)
 
 
-    def scrape(self, output_dir="archive", limit=None, skip_podcasts=False, html_only=False, md_only=False):
+    def scrape(self, output_dir="archive", limit=None, skip_podcasts=False, html_only=False, md_only=False, from_date=None, to_date=None):
         """Main scraping loop."""
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         print(f"Starting scrape for {self.base_url}...")
-        
+
         offset = 0
         batch_size = 12
         total_fetched = 0
-        
+
         while True:
             if limit and total_fetched >= limit:
                 break
-                
+
             batch_limit = batch_size
             if limit and (limit - total_fetched) < batch_size:
                 batch_limit = limit - total_fetched
 
             print(f"Fetching posts {offset} to {offset + batch_limit}...")
             posts = self.get_archive(limit=batch_limit, offset=offset)
-            
+
             if not posts:
                 break
-                
+
+            stop = False
             for post_summary in tqdm(posts):
                 if limit and total_fetched >= limit:
                     break
-                    
+
+                post_date = post_summary.get('post_date', '')[:10]
+                if to_date and post_date > to_date:
+                    continue
+                if from_date and post_date < from_date:
+                    print(f"Reached posts before {from_date}, stopping.")
+                    stop = True
+                    break
+
                 slug = post_summary.get('slug')
                 if not slug:
                     continue
@@ -270,20 +279,21 @@ class SubstackScraper:
                 if skip_podcasts and is_podcast:
                     print(f"Skipping podcast: {slug}")
                     continue
-                    
+
                 # Small delay to be nice
                 time.sleep(1)
-                
+
                 full_post = self.get_post(slug)
                 if full_post:
                     self.save_post(full_post, output_dir, html_only=html_only, md_only=md_only)
                     total_fetched += 1
-            
-            # Since we might skip posts, we can't just rely on total_fetched for offset
-            # We must consistently move the offset by the number of posts fetched from API
+
+            if stop:
+                break
+
             offset += len(posts)
-            
-            if len(posts) < batch_limit:  # No more posts (checked against what we asked for)
+
+            if len(posts) < batch_limit:
                 break
 
         print(f"Scraping complete. Downloaded {total_fetched} posts.")
@@ -296,7 +306,9 @@ def main():
     parser.add_argument("--skip-podcasts", action="store_true", help="Skip downloading podcast episodes")
     parser.add_argument("--html-only", action="store_true", help="Save only HTML files")
     parser.add_argument("--md-only", action="store_true", help="Save only Markdown files")
-    
+    parser.add_argument("--from-date", help="Only download posts on or after this date (YYYY-MM-DD)")
+    parser.add_argument("--to-date", help="Only download posts on or before this date (YYYY-MM-DD)")
+
     args = parser.parse_args()
 
     # Priority:
@@ -332,7 +344,7 @@ def main():
     domain = urlparse(args.url).netloc
     output_dir = os.path.join("archive", domain)
     
-    scraper.scrape(output_dir=output_dir, limit=args.limit, skip_podcasts=args.skip_podcasts, html_only=args.html_only, md_only=args.md_only)
+    scraper.scrape(output_dir=output_dir, limit=args.limit, skip_podcasts=args.skip_podcasts, html_only=args.html_only, md_only=args.md_only, from_date=args.from_date, to_date=args.to_date)
 
 if __name__ == "__main__":
     main()

@@ -10,6 +10,7 @@ venv/
 
 # Scraper Data
 archive/
+PM_Learnings/
 
 # Secrets / Sessions
 substack_session*.json
