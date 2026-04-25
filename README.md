@@ -109,3 +109,7 @@ archive/
 ## Disclaimer
 
 This tool is for personal archiving purposes only. Please respect the copyright of the authors and do not redistribute paid content.
+
+---
+
+*Forked from [carlvellotti/substack-downloader](https://github.com/carlvellotti/substack-downloader) — original work by [Carl Vellotti](https://github.com/carlvellotti).*
